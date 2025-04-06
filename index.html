@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Merkle Tree Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/merkletreejs@latest/merkletree.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/keccak256@latest/keccak256.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            max-width: 800px;
+            margin: auto;
+            background-color: #f8f8f8;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 1rem;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        #results {
+            margin-top: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        pre {
+            background: #eee;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔐 Merkle Tree Proof Generator</h1>
+    <p>Enter a wallet address to generate Merkle proof:</p>
+    <input type="text" id="walletInput" placeholder="0xYourAddressHere">
+    <button onclick="generateProof()">Generate Proof</button>
+
+    <div id="results"></div>
+
+    <script>
+        // List of wallet addresses to be used for Merkle tree generation
+        const addresses =
+            ["0x5B38Da6a701c568545dCfcB03FcB875f56beddC4",
+                "0x1C541e05a5A640755B3F1B2434dB4e8096b8322f", "0x1071258E2C706fFc9A32a5369d4094d11D4392Ec", "0x25f7fF7917555132eDD3294626D105eA1C797250",
+                "0xF6574D878f99D94896Da75B6762fc935F34C1300", "0xfDbAb374ee0FC0EA0D7e7A60917ac01365010bFe", "0xfB73f8B1DcD5d61D4dDC3872dA53200B8562F243",
+                "0x95F6E4C94857f605b9A73c9163D5c94AAf849c40", "0xEd2C82417256DF74a995213713A586E07d3e5255", "0xCb14d0D43BB32705fAbbD863f860A1410fa14613",
+                "0x7a865e44988a2ebcad845E977db07C71f8c62d31", "0x340F5bEcB63a33B53959026d0CEb1f83C53A102F", "0x969560dBBf4872049D0d245791eD74dEd0D66578",
+                "0x81B8888dfbdcc3Ad1dfe30A6f58a6d47eaf99aE8", "0x29aB6E246c4aC305974A730B10459417FF65D469", "0x2B790Dd5d9440f098E057E4958e3Ac0214712352",
+                "0xA53E16be846D815dfF774A384858021952b5B22E", "0x04473648f6BeA9b074DFd7693b20AFCF9971a125", "0xc26716b827c0d207AA3D25667028C2da1De787bf",
+                "0x21BAa9441e2DF389Ca27c9dB1cD9B59f2504dfEa", "0x93D5193694a49eB85366ea1BDa69B577f1b878ae",
+            ];
+
+        // Map each address to a hashed value (using keccak256 hash function)
+        // The resulting `leaves` will contain the hash of each address
+        const leaves = addresses.map(x => keccak256(x));  // Mapping each address to its hashed value
+
+        // Create a Merkle tree using the leaves (hashed wallet addresses) with the keccak256 hash function
+        // The `sortPairs: true` option sorts the pairs of leaves in the tree for consistency and deterministic hash computation
+        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });  // Create the Merkle tree
+
+        // Helper function to convert a buffer (binary data) into a hex string with '0x' prefix
+        const buff2hex = x => "0x" + x.toString("hex");  // Convert buffer to hex and add '0x' prefix
+
+        // Get the root hash of the Merkle tree (this will be the "root" of the tree)
+        // The Merkle tree root is the final hash of the entire tree structure
+        const root = buff2hex(tree.getRoot());  // Get the root of the tree and convert it to a hex string
+
+        // Function that is called when the user clicks the "Generate Proof" button
+        function generateProof() {
+            // Get the wallet address input by the user, and normalize it to lowercase
+            const input = document.getElementById("walletInput").value.trim().toLowerCase();  // Read user input
+
+            // Check if the input address matches any in the predefined whitelist (addresses array)
+            // The find method checks if the input address matches an entry (case-insensitive)
+            const match = addresses.find(addr => addr.toLowerCase() === input);  // Find matching address in the whitelist
+
+            // Reference the results container where the Merkle proof will be displayed
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";  // Clear any previous results
+
+            // If no match was found in the whitelist, show an error message
+            if (!match) {
+                resultsDiv.innerHTML = `<p style="color:red;">❌ Address not found in the whitelist.</p>`;  // Show error message if address not found
+                return;  // Exit the function early since no matching address was found
+            }
+
+            // If a matching address was found, generate the Merkle proof for that address
+            // The leaf is the hashed version of the input address
+            const leaf = keccak256(input);  // Hash the input address (leaf of the Merkle tree)
+
+            // Get the Merkle proof for the leaf (the path that proves the address is part of the Merkle tree)
+            // The proof is the series of hashes that demonstrate the leaf's inclusion in the tree
+            const proof = tree.getProof(leaf).map(x => buff2hex(x.data));  // Get Merkle proof and convert to hex format
+
+            // Display the results: wallet address, leaf (hashed address), root hash, and proof
+            resultsDiv.innerHTML = `
+            <h3>✅ Merkle Details</h3>
+            <p><strong>Wallet:</strong> ${input}</p>
+            <p><strong>Leaf:</strong> <pre>${buff2hex(leaf)}</pre></p>
+            <p><strong>Root:</strong> <pre>${root}</pre></p>
+            <p><strong>Proof:</strong> <pre>${JSON.stringify(proof, null, 2)}</pre></p>
+        `;  // Display proof information in the results div
+        }
+    </script>
+
+</body>
+
+</html>
