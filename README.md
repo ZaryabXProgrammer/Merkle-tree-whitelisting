@@ -42,3 +42,44 @@ const leaf = keccak256(input); // Hash the input address (leaf of the Merkle tre
 // The proof is the series of hashes that demonstrate the leaf's inclusion in the tree
 const proof = tree.getProof(leaf).map((x) => buff2hex(x.data)); // Get Merkle proof and convert to hex format
 ```
+### Solidity Contract Overview
+This contract is built on top of OpenZeppelin’s libraries for ERC721 and ownership management. The `safeMint` function allows an address to mint a token if it is part of an allowlist represented by a Merkle tree.
+
+```solidity
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";  
+
+contract MyNFT is ERC721, Ownable {
+    bytes32 public root;  // The root of the Merkle Tree (set by the owner)
+
+    uint256 private _nextTokenId;
+
+    constructor() ERC721("MyNFT", "MNFT") {}
+
+    // Function to mint the token only if the sender is part of the allowlist
+    function safeMint(address to, bytes32[] memory proof) public returns (uint256) {
+        // Verify the sender's address is part of the allowlist using Merkle proof
+        require(isValid(proof, keccak256(abi.encodePacked(msg.sender))), "Not a part of the allow list");
+
+        uint256 tokenId = _nextTokenId++;
+        _safeMint(to, tokenId);
+        return tokenId;
+    }
+
+    // Function to validate the Merkle proof for the sender's address
+    function isValid(bytes32[] memory proof, bytes32 leaf)
+        public
+        view
+        returns (bool)
+    {
+        return MerkleProof.verify(proof, root, leaf);  // Verify proof with the root and leaf
+    }
+
+    // Function to set the Merkle tree root (only the owner can call this)
+    function setRoot(bytes32 _root) external onlyOwner {
+        root = _root;  // Set the Merkle root to allow minting
+    }
+}
+
+```
